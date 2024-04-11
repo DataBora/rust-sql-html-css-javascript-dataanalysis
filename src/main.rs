@@ -7,7 +7,7 @@ mod models;
 
 use crate::db::database::DatabaseMSSQL;
 
-use api::mssqlapi::year_built_total_count;
+use api::mssqlapi::{year_built_total_count, sales_by_bedroom};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -20,6 +20,7 @@ async fn main() -> std::io::Result<()> {
                 App::new()
                     .app_data(db_data.clone())
                     .service(year_built_total_count)
+                    .service(sales_by_bedroom)
             })
             .bind("127.0.0.1:8080")?
             .run()

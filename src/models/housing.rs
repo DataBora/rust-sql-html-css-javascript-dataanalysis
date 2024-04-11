@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize,Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct YearBuiltCount {
@@ -35,6 +35,17 @@ impl YearBuiltCount {
     }
         
 }
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AvgSalesPriceByBedroom {
+    pub year_built: String,
+    pub sales_date: String,
+    pub avg_sale_price: f64,
+    pub bedrooms: u8,
+}
+
+
+
 
 
 // pub trait FromRow: Sized{
@@ -105,6 +116,6 @@ impl YearBuiltCount {
 
 // impl YearBuiltCount {
 //     pub fn new(year_built: String, total: i32) -> Self {
-//         YearBuiltCount { year_built, total }
-//     }
-// }
+    //         YearBuiltCount { year_built, total }
+    //     }
+    // }
