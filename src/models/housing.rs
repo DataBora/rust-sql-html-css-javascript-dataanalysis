@@ -44,6 +44,12 @@ pub struct AvgSalesPriceByBedroom {
     pub bedrooms: u8,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AvgPricePerAcreage {
+    pub acreage: f64,
+    pub avg_price: f64,
+}
+
 
 
 

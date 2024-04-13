@@ -1,21 +1,16 @@
 use anyhow::{Error, Result};
 use std::env;
 use std::sync::{Arc, Mutex};
-use tiberius::{Client, Config};//, AuthMethod
-// use tiberius::error::Error as tibError;
+use tiberius::{Client, Config};
+
 use tokio::net::TcpStream;
 use tokio_util::compat::TokioAsyncWriteCompatExt;
 
-use crate::models::housing::{YearBuiltCount, AvgSalesPriceByBedroom};
+use crate::models::housing::{YearBuiltCount, AvgSalesPriceByBedroom,AvgPricePerAcreage};
 
 pub struct DatabaseMSSQL {
     pub client: Arc<Mutex<Client<tokio_util::compat::Compat<TcpStream>>>>,
 }
-
-// pub struct DatabaseMSSQL {
-//     pub client: tiberius::Client<tokio_util::compat::Compat<tokio::net::TcpStream>>,
-// }
-
 
 impl DatabaseMSSQL {
 
@@ -114,7 +109,7 @@ impl DatabaseMSSQL {
                         bedrooms
                     };
 
-                   
+                    println!("YearBuilt: {}, SaleDate: {},AVGSalePrice: {}, Bedrooms: {} ", year_built, sales_date, avg_sale_price,bedrooms);
         
                     sales_by_bedrooms.push(sales_by_bedroom);
                 }
@@ -129,7 +124,30 @@ impl DatabaseMSSQL {
 
 
     }
-    
+
+    pub async fn avg_price_per_acreage(&self) -> Result<Vec<AvgPricePerAcreage>, Error> {
+        // Implement the function
+        let mut client = self.client.lock().expect("Failed to lock client mutex");
+        let mut average_price_per_acreage = Vec::<AvgPricePerAcreage>::new();
+
+        if let Some(rows) = client.query("SELECT Acreage as acreage, avg(SalePrice) as avg_price FROM nashousing GROUP BY Acreage ORDER BY Acreage DESC;", &[]).await.ok() {
+
+            for row in rows.into_first_result().await? {
+                let acreage = row.get("acreage").unwrap_or_default();
+                let avg_price = row.get("avg_price").unwrap_or_default();
+
+
+                let avg_price = AvgPricePerAcreage{
+                    acreage: acreage,
+                    avg_price
+                };
+                average_price_per_acreage.push(avg_price);
+            }
+        } else {
+            return Err(Error::msg("Failed to execute SQL query"));
+        }
+
+        Ok(average_price_per_acreage)
 
     // Function for getting total count for years built
       
@@ -143,6 +161,7 @@ impl DatabaseMSSQL {
         // Add more methods as needed
 
 
+    }
 }
 
 

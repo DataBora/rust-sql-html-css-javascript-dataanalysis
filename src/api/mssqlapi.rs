@@ -33,3 +33,18 @@ async fn sales_by_bedroom(db: web::Data<DatabaseMSSQL>) -> impl Responder {
     }
 }
 
+#[get("/avg_price_per_acreage")]
+async fn avg_price_per_acreage(db: web::Data<DatabaseMSSQL>) -> impl Responder {
+    
+    match db.avg_price_per_acreage().await {
+        Ok(avg_price) => {
+            if avg_price.is_empty() {
+                HttpResponse::NotFound().body("No data available in the database")
+            } else {
+                HttpResponse::Ok().json(avg_price)
+            }
+        }
+        Err(_) => HttpResponse::InternalServerError().body("Error retrieving Avg Price Per Acreage"),
+    }
+}
+
