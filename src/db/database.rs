@@ -1,12 +1,12 @@
 use anyhow::{Error, Result};
 use std::env;
 use std::sync::{Arc, Mutex};
-use tiberius::{Client, Config};
+use tiberius::{Client, Config, Query};
 
 use tokio::net::TcpStream;
 use tokio_util::compat::TokioAsyncWriteCompatExt;
 
-use crate::models::housing::{YearBuiltCount, AvgSalesPriceByBedroom,AvgPricePerAcreage};
+use crate::models::hremployees::HREmployees;
 
 pub struct DatabaseMSSQL {
     pub client: Arc<Mutex<Client<tokio_util::compat::Compat<TcpStream>>>>,
@@ -37,196 +37,161 @@ impl DatabaseMSSQL {
 
 
     //-------- CALCULATING COUNT OF TOTAL HOUSES BUILT BY YEAR --------------//
-    pub async fn year_built_total(&self) -> Result<Vec<YearBuiltCount>, Error> {
+    // pub async fn year_built_total(&self) -> Result<Vec<YearBuiltCount>, Error> {
 
-        let mut client = self.client.lock().expect("Failed to lock client mutex");
+    //     let mut client = self.client.lock().expect("Failed to lock client mutex");
        
-        let mut year_built_counts = Vec::<YearBuiltCount>::new();
+    //     let mut year_built_counts = Vec::<YearBuiltCount>::new();
     
-        if let Some(rows) = 
-            client.query("SELECT YearBuilt as year_built, COUNT(YearBuilt) AS total_houses 
-                                FROM nashousing 
-                                GROUP BY YearBuilt 
-                                ORDER BY YearBuilt DESC", &[]).await.ok() {
+    //     if let Some(rows) = 
+    //         client.query("SELECT YearBuilt as year_built, COUNT(YearBuilt) AS total_houses 
+    //                             FROM nashousing 
+    //                             GROUP BY YearBuilt 
+    //                             ORDER BY YearBuilt DESC", &[]).await.ok() {
                 
-                for row in rows.into_first_result().await? {
-                    let year_built: &str = row.get("year_built").unwrap_or_default();
-                    let total_houses: i32 = row.get("total_houses").unwrap_or_default();
+    //             for row in rows.into_first_result().await? {
+    //                 let year_built: &str = row.get("year_built").unwrap_or_default();
+    //                 let total_houses: i32 = row.get("total_houses").unwrap_or_default();
         
-                    // Clean and validate the fields
-                    let mut year_built_count = YearBuiltCount {
-                        year_built: year_built.to_string(),
-                        total_houses,
-                    };
+    //                 // Clean and validate the fields
+    //                 let mut year_built_count = YearBuiltCount {
+    //                     year_built: year_built.to_string(),
+    //                     total_houses,
+    //                 };
 
-                    year_built_count.clean_string_fields();
-                    match year_built_count.clean_i32_fields() {
-                        Ok(_) => {},
-                        Err(err_msg) => {
-                            eprintln!("Error cleaning i32 fields: {}", err_msg);
-                            continue; // Skip this entry if validation fails
-                        }
-                    }
+    //                 year_built_count.clean_string_fields();
+    //                 match year_built_count.clean_i32_fields() {
+    //                     Ok(_) => {},
+    //                     Err(err_msg) => {
+    //                         eprintln!("Error cleaning i32 fields: {}", err_msg);
+    //                         continue; // Skip this entry if validation fails
+    //                     }
+    //                 }
         
-                    // Print the retrieved data to the console
-                    println!("YearBuilt: {}, Total: {}", year_built_count.year_built, year_built_count.total_houses);
+    //                 // Print the retrieved data to the console
+    //                 println!("YearBuilt: {}, Total: {}", year_built_count.year_built, year_built_count.total_houses);
         
-                    year_built_counts.push(year_built_count);
-                }
-            } else {
-                // Handle the case where client.query returned None
-                // You may log an error message or return an appropriate error here
-                // depending on your application's requirements
-                return Err(Error::msg("Failed to execute SQL query"));
-            }
+    //                 year_built_counts.push(year_built_count);
+    //             }
+    //         } else {
+    //             // Handle the case where client.query returned None
+    //             // You may log an error message or return an appropriate error here
+    //             // depending on your application's requirements
+    //             return Err(Error::msg("Failed to execute SQL query"));
+    //         }
     
-        Ok(year_built_counts)
-    }
+    //     Ok(year_built_counts)
+    // }
 
-    pub async fn sales_by_bedrooms(&self)-> Result<Vec<AvgSalesPriceByBedroom>, Error>{
-
-        let mut client = self.client.lock().expect("Faled to lock mutes");
-        let mut sales_by_bedrooms = Vec::<AvgSalesPriceByBedroom>::new();
-
-        if let Some(rows) = 
-            client.query("SELECT YearBuilt as year_built, CONVERT(varchar,SaleDate,23) as sales_date, avg(SalePrice) as avg_sale_price,     Bedrooms as bedrooms FROM nashousing
-            WHERE Bedrooms > 6
-            GROUP BY YearBuilt, SaleDate, Bedrooms
-            ORDER BY Bedrooms DESC;", &[]).await.ok() {
-                
-                for row in rows.into_first_result().await? {
-
-                    let year_built: &str = row.get("year_built").unwrap_or_default();
-                    let sales_date: &str = row.get("sales_date").unwrap_or_default();
-                    let avg_sale_price: f64 = row.get("avg_sale_price").unwrap_or_default();
-                    let bedrooms: u8 = row.get("bedrooms").unwrap_or_default();
-        
-                    // Clean and validate the fields
-                    let sales_by_bedroom = AvgSalesPriceByBedroom{
-                        year_built: year_built.to_string(),
-                        sales_date: sales_date.to_string(),
-                        avg_sale_price,
-                        bedrooms
-                    };
-
-                    println!("YearBuilt: {}, SaleDate: {},AVGSalePrice: {}, Bedrooms: {} ", year_built, sales_date, avg_sale_price,bedrooms);
-        
-                    sales_by_bedrooms.push(sales_by_bedroom);
-                }
-            } else {
-                // Handle the case where client.query returned None
-                // You may log an error message or return an appropriate error here
-                // depending on your application's requirements
-                return Err(Error::msg("Failed to execute SQL query"));
-            }
     
-        Ok(sales_by_bedrooms)
-
-
-    }
-
-    pub async fn avg_price_per_acreage(&self) -> Result<Vec<AvgPricePerAcreage>, Error> {
-        // Implement the function
-        let mut client = self.client.lock().expect("Failed to lock client mutex");
-        let mut average_price_per_acreage = Vec::<AvgPricePerAcreage>::new();
-
-        if let Some(rows) = client.query("SELECT Acreage as acreage, avg(SalePrice) as avg_price FROM nashousing GROUP BY Acreage ORDER BY Acreage DESC;", &[]).await.ok() {
-
-            for row in rows.into_first_result().await? {
-                let acreage = row.get("acreage").unwrap_or_default();
-                let avg_price = row.get("avg_price").unwrap_or_default();
-
-
-                let avg_price = AvgPricePerAcreage{
-                    acreage: acreage,
-                    avg_price
-                };
-                average_price_per_acreage.push(avg_price);
-            }
-        } else {
-            return Err(Error::msg("Failed to execute SQL query"));
-        }
-
-        Ok(average_price_per_acreage)
-
     // Function for getting total count for years built
       
 
-        //   // Function to perform some other operation
+        //   // Function to perform POST methos for inserting data into the database for HR.Employees table
         //   pub async fn perform_operation(&self, param: &str) -> Result<(), Error> {
         //     // Implement the operation using SQL client
         //     // You can use the same pattern as other functions
         // }
+        pub async fn insert_data_into_hr_employee_table(&self, employee: HREmployees) -> Result<(), tiberius::error::Error> {
+            
+            let mut client = self.client.lock().expect("Failed to lock client mutex");
 
-        // Add more methods as needed
+            let mut query = Query::new("
+                INSERT INTO HR.Employees (lastname, firstname, title, titleofcourtesy, birthdate, hiredate, address, city, region, postalcode, country, phone, mgrid)
+                VALUES (@P1, @P2, @P3, @P4, @P5, @P6, @P7, @P8, @P9, @P10, @P11, @P12, @P13);
+            ");
+        
+            // let empid = &employee.empid;
+            let lastname = &employee.lastname;
+            let firstname = &employee.firstname;
+            let title = &employee.title;
+            let titleofcourtesy = &employee.titleofcourtesy;
+            let birthdate = employee.birthdate; 
+            let hiredate = employee.hiredate; 
+            let address = &employee.address;
+            let city = &employee.city;
+            let region = &employee.region;
+            let postalcode = &employee.postalcode;
+            let country = &employee.country;
+            let phone = &employee.phone;
+            let mgrid = &employee.mgrid;
+           
+            // query.bind(*empid);
+            query.bind(lastname);
+            query.bind(firstname);
+            query.bind(title);
+            query.bind(titleofcourtesy);
+            query.bind(birthdate);
+            query.bind(hiredate);
+            query.bind(address);
+            query.bind(city);
+            query.bind(region);
+            query.bind(postalcode);
+            query.bind(country);
+            query.bind(phone);
+            query.bind(*mgrid);
 
+            query.execute(&mut client).await?; 
+        
+            Ok(())
+        }
+
+       
 
     }
-}
+
 
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[tokio::test]
-    async fn year_built_total() {
-        // Arrange: Initialize the database connection
-        let db = DatabaseMSSQL::init()
-            .await
-            .expect("Failed to initialize database connection");
-
-        // Act: Call the function you want to test
-        let result = db.year_built_total().await;
-
-        // Assert: Check if the result is as expected
-        match result {
-            Ok(year_built_counts) => {
-                if year_built_counts.is_empty() {
-                    println!("No data returned from the database.");
-                } else {
-                    // Print the retrieved data to the console
-                    for count in &year_built_counts {
-                        println!("YearBuilt: {}, Total: {}", count.year_built, count.total_houses);
-                    }
-                }
-            }
-            Err(err) => {
-                // Handle the error if the function call fails
-                println!("Error occurred: {:?}", err);
-                panic!("Error occurred: {:?}", err);
-            }
-        }
-    }
+    use chrono::NaiveDate;
+    use crate::models::hremployees::{HREmployees, NaiveDateWrapper};
 
     #[tokio::test]
-    async fn sales_by_bedroom() {
-        // Arrange: Initialize the database connection
-        let db = DatabaseMSSQL::init()
-            .await
-            .expect("Failed to initialize database connection");
+async fn test_insert_data_into_hr_employee_table() {
+    // Arrange: Initialize the database connection
+    let db = DatabaseMSSQL::init()
+        .await
+        .expect("Failed to initialize database connection");
 
-        // Act: Call the function you want to test
-        let result = db.sales_by_bedrooms().await;
+    // Create a sample HREmployees instance for testing
+    let employee = HREmployees {
+        
+        // empid: 10,
+        lastname: "Grujicic".to_string(),
+        firstname: "Borivoj".to_string(),
+        title: "Software Engineer".to_string(),
+        titleofcourtesy: "Mr.".to_string(),
+        birthdate: NaiveDateWrapper(NaiveDate::from_ymd_opt(1990, 1, 1).unwrap_or_default()),
+        hiredate: NaiveDateWrapper(NaiveDate::from_ymd_opt(2020, 1, 1).unwrap_or_default()),
+        address: "123 Main St".to_string(),
+        city: "Belgrade".to_string(),
+        region: "Region".to_string(),
+        postalcode: "12345".to_string(),
+        country: "SRB".to_string(),
+        phone: "123-456-7890".to_string(),
+        mgrid: Option::from(3),
+    };
 
-        // Assert: Check if the result is as expected
-        match result {
-            Ok(sales) => {
-                if sales.is_empty() {
-                    println!("No data returned from the database.");
-                } else {
-                    // Print the retrieved data to the console
-                    for count in &sales {
-                        println!("YearBuilt: {}, SaleDate: {},AVGSalePrice: {}, Bedrooms: {} ", count.year_built, count.sales_date, count.avg_sale_price,count.bedrooms);
-                    }
-                }
-            }
-            Err(err) => {
-                // Handle the error if the function call fails
-                println!("Error occurred: {:?}", err);
-                panic!("Error occurred: {:?}", err);
-            }
+    // Act: Call the function you want to test
+    let result = db.insert_data_into_hr_employee_table(employee).await;
+
+    // Assert: Check if the result is as expected
+    match result {
+        Ok(_) => {
+            // If the insertion succeeds, print a success message
+            println!("Data inserted successfully.");
+        }
+        Err(err) => {
+            // If an error occurs, print the error message
+            println!("Error occurred: {:?}", err);
+            // Fail the test
+            panic!("Error occurred: {:?}", err);
         }
     }
+}
+
 }
 

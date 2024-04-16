@@ -7,10 +7,6 @@ edition = "2021"
 
 [dependencies]
 tiberius = { version = "0.12.2", features = ["chrono", "tds73", "time"]}
-# bb8-tiberius = "0.15.0"
-# async-native-tls = "0.5.0"
-# tokio-tls = "0.3.1"
-# bb8 = "0.8.3"
 actix-web = "4.0.0"
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.0", features = ["full"] }
@@ -18,3 +14,5 @@ tokio-util = { version = "0.7.10", features = ["compat"] }
 serde_json = "1.0.64"
 anyhow = "1.0.0"
 dotenv ="0.15.0"
+chrono = "0.4.38"
+validator = {version = "0.18.1", features = ["derive"]}
