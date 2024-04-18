@@ -1,5 +1,5 @@
 use crate::{db::database::DatabaseMSSQL, models::hremployees::HREmployees};
-use actix_web::{post, web, HttpResponse, Responder};
+use actix_web::{get, post, web, HttpResponse, Responder};
 use validator::Validate;
 use anyhow::Error;
 
@@ -44,4 +44,16 @@ async fn insert_into_hr_employee_table(db: web::Data<DatabaseMSSQL>, employee: w
 
     // Return success response
     HttpResponse::Ok().body("Data inserted successfully")
+}
+
+//create a api end pint to call scrape_currencies_from_narodna_banka function
+#[get("/scrape_currencies_from_narodna_banka_api")]
+async fn scrape_currencies_from_narodna_banka_api(db: web::Data<DatabaseMSSQL>) -> impl Responder {
+    
+    match db.scrape_currencies_from_narodna_banka().await {
+        Ok(_) => HttpResponse::Ok().body("Data inserted successfully"),
+        Err(err) => HttpResponse::InternalServerError().body(format!("Error inserting data: {:?}", err)),
+        
+    }
+    
 }
