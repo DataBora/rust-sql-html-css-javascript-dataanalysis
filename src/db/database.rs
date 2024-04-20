@@ -9,6 +9,7 @@ use tokio_util::compat::TokioAsyncWriteCompatExt;
 use scraper::{Html, Selector};
 
 use crate::models::hremployees::HREmployees;
+use crate::models::currencydata::Currencies;
 
 
 
@@ -42,51 +43,49 @@ impl DatabaseMSSQL {
 
 
     //-------- CALCULATING COUNT OF TOTAL HOUSES BUILT BY YEAR --------------//
-    // pub async fn year_built_total(&self) -> Result<Vec<YearBuiltCount>, Error> {
-
-    //     let mut client = self.client.lock().expect("Failed to lock client mutex");
+    pub async fn get_currency_data(&self) -> Result<Vec<Currencies>, Error> {
+        let mut client = self.client.lock().expect("Failed to lock client mutex");
        
-    //     let mut year_built_counts = Vec::<YearBuiltCount>::new();
+        let mut currencies_data = Vec::<Currencies>::new();
     
-    //     if let Some(rows) = 
-    //         client.query("SELECT YearBuilt as year_built, COUNT(YearBuilt) AS total_houses 
-    //                             FROM nashousing 
-    //                             GROUP BY YearBuilt 
-    //                             ORDER BY YearBuilt DESC", &[]).await.ok() {
-                
-    //             for row in rows.into_first_result().await? {
-    //                 let year_built: &str = row.get("year_built").unwrap_or_default();
-    //                 let total_houses: i32 = row.get("total_houses").unwrap_or_default();
-        
-    //                 // Clean and validate the fields
-    //                 let mut year_built_count = YearBuiltCount {
-    //                     year_built: year_built.to_string(),
-    //                     total_houses,
-    //                 };
-
-    //                 year_built_count.clean_string_fields();
-    //                 match year_built_count.clean_i32_fields() {
-    //                     Ok(_) => {},
-    //                     Err(err_msg) => {
-    //                         eprintln!("Error cleaning i32 fields: {}", err_msg);
-    //                         continue; // Skip this entry if validation fails
-    //                     }
-    //                 }
-        
-    //                 // Print the retrieved data to the console
-    //                 println!("YearBuilt: {}, Total: {}", year_built_count.year_built, year_built_count.total_houses);
-        
-    //                 year_built_counts.push(year_built_count);
-    //             }
-    //         } else {
-    //             // Handle the case where client.query returned None
-    //             // You may log an error message or return an appropriate error here
-    //             // depending on your application's requirements
-    //             return Err(Error::msg("Failed to execute SQL query"));
-    //         }
+        if let Some(rows) = client.query("SELECT * FROM dbo.Currencies;", &[]).await.ok() {
+            for row in rows.into_first_result().await? {
+                let oznaka_valute: &str= row.get("oznaka_valute").expect("Failed to get oznaka_valute");
+                let sifra_valute: i32 = row.get("sifra_valute").expect("Failed to get sifra_valute");
+                let naziv_zemlje: &str = row.get("naziv_zemlje").expect("Failed to get naziv_zemlje");
+                let vazi_za: i32 = row.get("vazi_za").expect("Failed to get vazi_za");
+                let srednji_kurs: f64 = row.get("srednji_kurs").expect("Failed to get srednji_kurs");
     
-    //     Ok(year_built_counts)
-    // }
+                // Clean and validate the fields
+                let currency_data = Currencies {
+                    oznaka_valute: oznaka_valute.to_string(),
+                    sifra_valute,
+                    naziv_zemlje: naziv_zemlje.to_string(),
+                    vazi_za,
+                    srednji_kurs,
+                };
+                // Print the retrieved data to the console
+                println!(
+                    "Oznaka Valute: {}, Sifra Valute: {}, Naziv Zemlje: {}, Vazi za: {}, Srednji Kurs: {}",
+                    currency_data.oznaka_valute,
+                    currency_data.sifra_valute,
+                    currency_data.naziv_zemlje,
+                    currency_data.vazi_za,
+                    currency_data.srednji_kurs
+                );
+    
+                currencies_data.push(currency_data);
+            }
+        } else {
+            return Err(Error::msg("Failed to execute SQL query"));
+        }
+    
+        Ok(currencies_data)
+    }
+    
+    
+    
+    
 
         pub async fn insert_data_into_hr_employee_table(&self, employee: HREmployees) -> Result<(), tiberius::error::Error> {
             
@@ -223,7 +222,7 @@ impl DatabaseMSSQL {
             let query_exec = "EXEC CurrecyUpdaterUSDtoRSD;";
             let query = Query::new(query_exec);
             query.execute(&mut client).await?;
-            
+
         
             Ok(())
         }

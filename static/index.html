@@ -3,50 +3,50 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Currency Scraper</title>
+    <title>Currencies</title>
   </head>
   <body>
     <h1>Currencies</h1>
-    <button id="fetchCurrenciesButton">Fetch Currencies</button>
     <table id="currencies-table">
       <thead>
         <tr>
-          <th>Oznaka Valute</th>
-          <th>Srednji Kurs</th>
+          <th>Code</th>
+          <th>Name</th>
+          <th>Country</th>
+          <th>Rate</th>
         </tr>
       </thead>
-      <tbody id="currencies-list"></tbody>
+      <tbody></tbody>
     </table>
 
-    <script>
-      document
-        .getElementById("fetchCurrenciesButton")
-        .addEventListener("click", () => {
-          fetchCurrencies();
-        });
+    <button id="refresh-btn">Refresh</button>
 
-      function fetchCurrencies() {
+    <script>
+      function fetchData() {
         fetch("http://localhost:8080/scrape_currencies_from_narodna_banka_api")
           .then((response) => response.json())
           .then((data) => {
-            const currenciesList = document.getElementById("currencies-list");
-            currenciesList.innerHTML = ""; // Clear previous data
-
+            const tableBody = document.querySelector("#currencies-table tbody");
+            tableBody.innerHTML = "";
             data.forEach((currency) => {
               const row = document.createElement("tr");
-              const oznakaValuteCell = document.createElement("td");
-              const srednjiKursCell = document.createElement("td");
-
-              oznakaValuteCell.textContent = currency.oznaka_valute;
-              srednjiKursCell.textContent = currency.srednji_kurs;
-
-              row.appendChild(oznakaValuteCell);
-              row.appendChild(srednjiKursCell);
-              currenciesList.appendChild(row);
+              row.innerHTML = `
+                            <td>${currency.oznaka_valute}</td>
+                            <td>${currency.naziv_zemlje}</td>
+                            <td>${currency.sifra_valute}</td>
+                            <td>${currency.vazi_za}</td>
+                            <td>${currency.srednji_kurs}</td>
+                        `;
+              tableBody.appendChild(row);
             });
           })
           .catch((error) => console.error("Error fetching currencies:", error));
       }
+
+      document
+        .querySelector("#refresh-btn")
+        .addEventListener("click", fetchData);
+      fetchData(); // Fetch data on page load
     </script>
   </body>
 </html>

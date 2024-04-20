@@ -3,26 +3,25 @@ use actix_web::{get, post, web, HttpResponse, Responder};
 use validator::Validate;
 use anyhow::Error;
 
-// #[get("/year_built_total_count")]
-// async fn year_built_total_count(db: web::Data<DatabaseMSSQL>) -> impl Responder {
-//     // Validate the received JSON data
 
-//     match db.year_built_total().await {
-//         Ok(found_orders) => {
-//             if found_orders.is_empty() {
-//                 HttpResponse::NotFound().body("No data available in the database")
-//             } else {
-//                 HttpResponse::Ok().json(found_orders)
-//             }
-//         }
-//         Err(_) => HttpResponse::InternalServerError().body("Error retrieving Year Built Total"),
-//     }
-// }
+//get route for get_currency_data
+#[get("/get_currency_data")]
+async fn get_currency_data(db: web::Data<DatabaseMSSQL>) -> impl Responder {
+   
+    match db.get_currency_data().await {
+        Ok(curr_data) => {
+            if curr_data.is_empty() {
+                HttpResponse::NotFound().body("No data available in the database")
+            } else {
+                HttpResponse::Ok().json(curr_data)
+            }
+        }
+        Err(_) => HttpResponse::InternalServerError().body("Error retrieving Currency data"),
+    }
+}
 
 
 //post route for inert data into HR.Employee
-
-
 #[post("/insert_into_hr_employee_table")]
 async fn insert_into_hr_employee_table(db: web::Data<DatabaseMSSQL>, employee: web::Json<HREmployees>) -> impl Responder {
     // Validate the received JSON data
