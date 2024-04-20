@@ -6,13 +6,14 @@
     <title>Currencies</title>
   </head>
   <body>
-    <h1>Currencies</h1>
+    <h1>Currency Exchange Rates</h1>
     <table id="currencies-table">
       <thead>
         <tr>
           <th>Code</th>
           <th>Name</th>
           <th>Country</th>
+          <th>Valid for</th>
           <th>Rate</th>
         </tr>
       </thead>
@@ -23,24 +24,49 @@
 
     <script>
       function fetchData() {
+        // Fetch data from the first API to populate the table
         fetch("http://localhost:8080/scrape_currencies_from_narodna_banka_api")
-          .then((response) => response.json())
-          .then((data) => {
-            const tableBody = document.querySelector("#currencies-table tbody");
-            tableBody.innerHTML = "";
-            data.forEach((currency) => {
-              const row = document.createElement("tr");
-              row.innerHTML = `
-                            <td>${currency.oznaka_valute}</td>
-                            <td>${currency.naziv_zemlje}</td>
-                            <td>${currency.sifra_valute}</td>
-                            <td>${currency.vazi_za}</td>
-                            <td>${currency.srednji_kurs}</td>
-                        `;
-              tableBody.appendChild(row);
-            });
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("Failed to insert data into database");
+            }
+            return response.text();
           })
-          .catch((error) => console.error("Error fetching currencies:", error));
+          .then((message) => {
+            console.log(message); // Log the response message
+
+            // Fetch data from the second API to update the table
+            console.log("Fetching data from the second API...");
+            fetch("http://localhost:8080/get_currency_data")
+              .then((response) => {
+                console.log("Response from the second API:", response);
+                return response.json();
+              })
+              .then((data) => {
+                console.log("Data from the second API:", data);
+                const tableBody = document.querySelector(
+                  "#currencies-table tbody"
+                );
+                tableBody.innerHTML = "";
+                data.forEach((currency) => {
+                  const row = document.createElement("tr");
+                  row.innerHTML = `
+                    <td>${currency.oznaka_valute}</td>
+                    <td>${currency.sifra_valute}</td>
+                    <td>${currency.naziv_zemlje}</td>
+                    <td>${currency.vazi_za}</td>
+                    <td>${currency.srednji_kurs}</td>
+                  `;
+                  tableBody.appendChild(row);
+                });
+              })
+              .catch((error) =>
+                console.error("Error fetching currencies:", error)
+              );
+          })
+          .catch((error) =>
+            console.error("Error inserting data into database:", error)
+          );
       }
 
       document

@@ -65,14 +65,14 @@ impl DatabaseMSSQL {
                     srednji_kurs,
                 };
                 // Print the retrieved data to the console
-                println!(
-                    "Oznaka Valute: {}, Sifra Valute: {}, Naziv Zemlje: {}, Vazi za: {}, Srednji Kurs: {}",
-                    currency_data.oznaka_valute,
-                    currency_data.sifra_valute,
-                    currency_data.naziv_zemlje,
-                    currency_data.vazi_za,
-                    currency_data.srednji_kurs
-                );
+                // println!(
+                //     "Oznaka Valute: {}, Sifra Valute: {}, Naziv Zemlje: {}, Vazi za: {}, Srednji Kurs: {}",
+                //     currency_data.oznaka_valute,
+                //     currency_data.sifra_valute,
+                //     currency_data.naziv_zemlje,
+                //     currency_data.vazi_za,
+                //     currency_data.srednji_kurs
+                // );
     
                 currencies_data.push(currency_data);
             }

@@ -1,5 +1,7 @@
 use actix_web::{web, App, HttpServer};
 use actix_files::Files;
+use actix_cors::Cors;
+
 use std::io;
 use futures::future;
 
@@ -28,6 +30,7 @@ async fn main() -> io::Result<()> {
     let backend_server = if let Some(db) = db {
         HttpServer::new(move || {
             App::new()
+                .wrap(Cors::permissive())
                 .app_data(web::Data::new(db.clone()))
                 // .wrap(Logger::default())
                 .service(insert_into_hr_employee_table)
@@ -41,8 +44,11 @@ async fn main() -> io::Result<()> {
     };
 
     // Start a separate HTTP server for serving frontend files
-    let frontend_server = HttpServer::new(|| {
-        App::new().service(Files::new("/", "static").index_file("index.html"))
+    let frontend_server = 
+            HttpServer::new(|| {
+            App::new()
+            .wrap(Cors::default())
+            .service(Files::new("/", "static").index_file("index.html"))
     })
     .bind("127.0.0.1:3000")?;
 
