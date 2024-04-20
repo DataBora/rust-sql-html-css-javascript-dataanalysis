@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Currency Scraper</title>
+  </head>
+  <body>
+    <h1>Currencies</h1>
+    <button id="fetchCurrenciesButton">Fetch Currencies</button>
+    <table id="currencies-table">
+      <thead>
+        <tr>
+          <th>Oznaka Valute</th>
+          <th>Srednji Kurs</th>
+        </tr>
+      </thead>
+      <tbody id="currencies-list"></tbody>
+    </table>
+
+    <script>
+      document
+        .getElementById("fetchCurrenciesButton")
+        .addEventListener("click", () => {
+          fetchCurrencies();
+        });
+
+      function fetchCurrencies() {
+        fetch("http://localhost:8080/scrape_currencies_from_narodna_banka_api")
+          .then((response) => response.json())
+          .then((data) => {
+            const currenciesList = document.getElementById("currencies-list");
+            currenciesList.innerHTML = ""; // Clear previous data
+
+            data.forEach((currency) => {
+              const row = document.createElement("tr");
+              const oznakaValuteCell = document.createElement("td");
+              const srednjiKursCell = document.createElement("td");
+
+              oznakaValuteCell.textContent = currency.oznaka_valute;
+              srednjiKursCell.textContent = currency.srednji_kurs;
+
+              row.appendChild(oznakaValuteCell);
+              row.appendChild(srednjiKursCell);
+              currenciesList.appendChild(row);
+            });
+          })
+          .catch((error) => console.error("Error fetching currencies:", error));
+      }
+    </script>
+  </body>
+</html>

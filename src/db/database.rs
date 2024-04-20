@@ -10,6 +10,9 @@ use scraper::{Html, Selector};
 
 use crate::models::hremployees::HREmployees;
 
+
+
+#[derive(Clone)]
 pub struct DatabaseMSSQL {
     pub client: Arc<Mutex<Client<tokio_util::compat::Compat<TcpStream>>>>,
 }
