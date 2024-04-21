@@ -11,8 +11,6 @@ use scraper::{Html, Selector};
 use crate::models::hremployees::HREmployees;
 use crate::models::currencydata::Currencies;
 
-
-
 #[derive(Clone)]
 pub struct DatabaseMSSQL {
     pub client: Arc<Mutex<Client<tokio_util::compat::Compat<TcpStream>>>>,
@@ -55,6 +53,7 @@ impl DatabaseMSSQL {
                 let naziv_zemlje: &str = row.get("naziv_zemlje").expect("Failed to get naziv_zemlje");
                 let vazi_za: i32 = row.get("vazi_za").expect("Failed to get vazi_za");
                 let srednji_kurs: f64 = row.get("srednji_kurs").expect("Failed to get srednji_kurs");
+                let datum: &str = row.get("datum").expect("Failed to get datum");
     
                 // Clean and validate the fields
                 let currency_data = Currencies {
@@ -63,17 +62,9 @@ impl DatabaseMSSQL {
                     naziv_zemlje: naziv_zemlje.to_string(),
                     vazi_za,
                     srednji_kurs,
+                    datum: datum.to_string(),
+
                 };
-                // Print the retrieved data to the console
-                // println!(
-                //     "Oznaka Valute: {}, Sifra Valute: {}, Naziv Zemlje: {}, Vazi za: {}, Srednji Kurs: {}",
-                //     currency_data.oznaka_valute,
-                //     currency_data.sifra_valute,
-                //     currency_data.naziv_zemlje,
-                //     currency_data.vazi_za,
-                //     currency_data.srednji_kurs
-                // );
-    
                 currencies_data.push(currency_data);
             }
         } else {
@@ -142,7 +133,8 @@ impl DatabaseMSSQL {
                     sifra_valute INT,
                     naziv_zemlje VARCHAR(500),
                     vazi_za INT,
-                    srednji_kurs FLOAT
+                    srednji_kurs FLOAT,
+                    datum varchar(11)
                 );
             ";
         

@@ -1,6 +1,5 @@
-use serde::{Deserialize,Serialize};
+use serde::{Deserialize, Serialize};
 use validator::Validate;
-
 
 
 #[derive(Serialize, Deserialize, Debug, Validate)]
@@ -12,4 +11,5 @@ pub struct Currencies {
     pub naziv_zemlje: String,
     pub vazi_za: i32,
     pub srednji_kurs: f64,
+    pub datum: String,
 }

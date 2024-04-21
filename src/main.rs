@@ -42,6 +42,7 @@ async fn main() -> io::Result<()> {
     } else {
         return Err(std::io::Error::new(std::io::ErrorKind::Other, "Failed to start MSSQL server"));
     };
+    println!("BACKEND server is running at http://127.0.0.1:8080");
 
     // Start a separate HTTP server for serving frontend files
     let frontend_server = 
@@ -49,8 +50,11 @@ async fn main() -> io::Result<()> {
             App::new()
             .wrap(Cors::default())
             .service(Files::new("/", "static").index_file("index.html"))
+        
     })
     .bind("127.0.0.1:3000")?;
+
+    println!("FRONTEND server is running at http://127.0.0.1:3000");
 
     // Run both servers concurrently
     future::try_join(frontend_server.run(), backend_server).await?;
