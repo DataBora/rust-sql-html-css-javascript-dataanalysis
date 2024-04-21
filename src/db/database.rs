@@ -73,10 +73,6 @@ impl DatabaseMSSQL {
     
         Ok(currencies_data)
     }
-    
-    
-    
-    
 
         pub async fn insert_data_into_hr_employee_table(&self, employee: HREmployees) -> Result<(), tiberius::error::Error> {
             

@@ -38,6 +38,17 @@ fn string_ascii_check(s: &str) -> Result<(), ValidationError> {
     Ok(())
 }
 
+// impl HREmployees{
+//     pub fn clean_string_ascii_check(s: &str) -> Result<(), ValidationError> {
+//         if !s.chars().all(|c| c.is_ascii_alphanumeric()) {
+//             return Err(ValidationError::new("Invalid characters in string"));
+//         } else {
+//             Ok(())
+//         }
+//     }
+    
+// }
+
 
 #[derive(Debug)]
 pub struct NaiveDateWrapper(pub NaiveDate);

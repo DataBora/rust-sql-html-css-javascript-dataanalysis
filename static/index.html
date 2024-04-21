@@ -14,11 +14,11 @@
         height: 100%;
       }
 
-      /* .ag-cell {
-        font-weight: bold;
-      } */
+      .ag-cell-font-size {
+        font-size: 23px;
+      }
 
-      .ag-cell-highlighted {
+      .ag-cell-bold {
         /* background-color: red; */
         font-weight: bold;
         /* Add other styles as needed */
@@ -115,12 +115,21 @@
             // Initialize AG Grid
             const gridOptions = {
               columnDefs: [
-                { headerName: "Currency", field: "oznaka_valute" },
+                {
+                  headerName: "Currency",
+                  field: "oznaka_valute",
+                  cellClassRules: {
+                    "ag-cell-font-size": (p) => p.data.oznaka_valute,
+                  },
+                },
                 { headerName: "Code", field: "sifra_valute" },
                 {
                   headerName: "Country Name",
                   field: "naziv_zemlje",
                   cellRenderer: "countryCellRenderer",
+                  cellClassRules: {
+                    "ag-cell-font-size": (p) => p.data.naziv_zemlje,
+                  },
                 },
                 { headerName: "Valid for", field: "vazi_za" },
                 {
@@ -128,7 +137,8 @@
                   field: "srednji_kurs",
                   valueFormatter: (params) => "RSD " + params.value.toFixed(2),
                   cellClassRules: {
-                    "ag-cell-highlighted": (p) => p.data.srednji_kurs,
+                    // "ag-cell-bold": (p) => p.data.srednji_kurs,
+                    "ag-cell-font-size": (p) => p.data.srednji_kurs,
                   },
                 },
                 { headerName: "Date", field: "datum" },
@@ -161,7 +171,7 @@
         const flag = params.data.flag;
         const countryName = params.value;
 
-        const flagImage = '<img style="height: 20px;" src="' + flag + '" />';
+        const flagImage = '<img style="height: 30px;" src="' + flag + '" />';
         const countryText = "<span>" + countryName + "</span>";
 
         return flagImage + " " + countryText;
