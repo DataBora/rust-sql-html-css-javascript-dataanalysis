@@ -10,6 +10,7 @@ use scraper::{Html, Selector};
 
 use crate::models::hremployees::HREmployees;
 use crate::models::currencydata::Currencies;
+use crate::models::ordersreport::OrdersReport;
 
 #[derive(Clone)]
 pub struct DatabaseMSSQL {
@@ -213,6 +214,87 @@ impl DatabaseMSSQL {
 
         
             Ok(())
+        }
+
+        pub async fn sales_orders_report(&self) -> Result<Vec<OrdersReport>, Error> {
+
+            let mut client = self.client.lock().expect("Failed to lock client mutex");
+
+           
+            let mut orders_data = Vec::<OrdersReport>::new();
+
+            if let Some(rows) = client.query(" 
+                    SELECT c.companyname as cutomer_name
+                        , c.contactname as customer_contact
+                        , CASE WHEN c.country = 'UK' then 'United Kingdom'
+                                WHEN c.country = 'USA' then 'United States'
+                                ELSE c.country
+                            END as customer_country
+                        , e.lastname + ', ' + e.firstname as employee_name
+                        , e.title as employee_title
+                        , sh.companyname as shipper_name
+                        , o.shipname as ship_name
+                        , CAST(o.orderdate as varchar(10)) as order_date
+                        , CAST(o.requireddate as varchar(10)) as delivery_date
+                        , MAX(o.freight) as freight_value
+                        , CAST(SUM (od.unitprice*od.qty*(1-od.discount)) as float) as order_value
+                        , CAST(MAX(o.freight) + SUM (od.unitprice*od.qty*(1-od.discount)) as float) as billable_value
+                    FROM [Sales].[Orders] as o
+                    JOIN [Sales].[Customers] as c on o.custid = c.custid
+                    JOIN [HR].[Employees] as e on o.empid = e.empid
+                    JOIN [Sales].[Shippers] as sh on o.shipperid = sh.shipperid
+                    JOIN [Sales].[OrderDetails] as od on o.orderid = od.orderid
+                    JOIN [Production].[Products] as p on od.productid = p.productid
+                    GROUP BY c.companyname 
+                        , c.contactname 
+                        , c.country
+                        , e.lastname + ', ' + e.firstname 
+                        , e.title 
+                        , sh.companyname 
+                        , o.shipname
+                        , o.orderdate
+                        , o.requireddate
+            ", &[]).await.ok() {
+
+                for row in rows.into_first_result().await? {
+
+                    let customer_name: &str= row.get("cutomer_name").expect("Failed to get cutomer_name");
+                    let customer_contact_name: &str = row.get("customer_contact").expect("Failed to get customer_contact");
+                    let customer_country: &str = row.get("customer_country").expect("Failed to get customer_country");
+                    let employee_name: &str = row.get("employee_name").expect("Failed to get employee_name");
+                    let employee_title: &str = row.get("employee_title").expect("Failed to get employee_title");
+                    let shipper_name: &str = row.get("shipper_name").expect("Failed to get shipper_name");
+                    let ship_name: &str = row.get("ship_name").expect("Failed to get ship_name");
+                    let order_date: &str = row.get("order_date").expect("Failed to get order_date");
+                    let delivery_date: &str = row.get("delivery_date").expect("Failed to get delivery_date");
+                    let freight_value: f64 = row.get("freight_value").expect("Failed to get freight_value");
+                    let order_value: f64 = row.get("order_value").expect("Failed to get order_value");
+                    let billable_value: f64 = row.get("billable_value").expect("Failed to get billable_value");
+
+                    let orders_report = OrdersReport {
+                        customer_name: customer_name.to_string(),
+                        customer_contact_name: customer_contact_name.to_string(),
+                        customer_country: customer_country.to_string(),
+                        employee_name: employee_name.to_string(),
+                        employee_title: employee_title.to_string(),
+                        shipper_name: shipper_name.to_string(),
+                        ship_name: ship_name.to_string(),
+                        order_date: order_date.to_string(),
+                        delivery_date: delivery_date.to_string(),
+                        freight_value,
+                        order_value,
+                        billable_value,
+                    };
+                    orders_data.push(orders_report);
+
+                    // println!("Orders Report: {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}", customer_name, customer_contact_name, customer_country, employee_name, employee_title, shipper_name, ship_name, order_date, delivery_date, freight_value, order_value, billable_value);
+                    }
+                } else {
+                    return Err(Error::msg("Failed to execute SQL query"));
+                }
+
+            Ok(orders_data)
+            
         }
                     
                 

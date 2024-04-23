@@ -6,6 +6,7 @@
     <title>Currencies</title>
     <!-- Includes all JS & CSS for AG Grid -->
     <script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.17.4/dist/xlsx.full.min.js"></script>
 
     <style>
       /* Ensure the grid takes the full width and height of its container */
@@ -28,9 +29,25 @@
         font-size: 14px;
         margin-left: 10px;
       }
+
+      /* Button style */
+    .export-button {
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+      border-radius: 5px;
+      text-decoration: none;
+    }
+
+    .export-button:hover {
+      background-color: #45a049;
+    }
     </style>
   </head>
-  <body>
+ 
     <h1>
       Currencies from Serbain National Bank
       <span id="last-refresh"
@@ -178,6 +195,166 @@
       }
 
       fetchData(); // Fetch data on page load
+    </script>
+
+    <h1>
+      Sales Order Report
+    </h1>
+
+    <button class="export-button" onclick="exportToExcel()">Export to Excel</button>
+  <table id="ordersTable">
+    <!-- Table content will be filled with data from the API -->
+  </table>
+
+  <script>
+    function exportToExcel() {
+      fetch("http://localhost:8080/get_orders_report")
+        .then(response => response.json())
+        .then(data => {
+          const worksheet = XLSX.utils.json_to_sheet(data);
+          const workbook = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(workbook, worksheet, "Orders");
+          const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+          saveExcelFile(excelBuffer, "sales_order_report.xlsx");
+        })
+        .catch(error => console.error("Error fetching data:", error));
+    }
+
+    function saveExcelFile(buffer, filename) {
+      const blob = new Blob([buffer], { type: "application/octet-stream" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }, 0);
+    }
+  </script>
+    <!-- Second AG Grid container -->
+    <div id="myGrid2" class="ag-theme-quartz-dark" style="height: 570px"></div>
+    </div>
+
+    <script>
+    //Sales order report with AG Grid
+    function SalesOrderReport() {
+      fetch("http://localhost:8080/get_orders_report")
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("Failed to fetch currency data");
+          }
+          return response.json();
+        })
+        .then((data) => {
+          console.log("Data from the orders API:", data);
+          // Fetch country flags and update the table
+          fetchCountryFlags2(data);
+        })
+        .catch((error) => console.error("Error fetching currencies:", error));
+    }
+
+    function fetchCountryFlags2(data) {
+      // Fetch country flags JSON
+
+      fetch(
+        "https://cdn.jsdelivr.net/npm/country-flag-emoji-json@2.0.0/dist/index.json"
+      )
+      .then((response) => {
+            if (!response.ok) {
+              throw new Error("Failed to fetch country flags");
+            }
+            return response.json();
+          })
+          .then((countryFlags) => {
+            // Map country names to flag URLs
+            const countryFlagMap = new Map();
+            countryFlags.forEach((flag) => {
+              countryFlagMap.set(flag.name.trim(), flag.image);
+            });
+
+            // Filter data to remove rows with missing flag images
+            const filteredData = data.filter((row) => {
+              const countryName = row.customer_country;
+              return countryFlagMap.has(countryName);
+            });
+
+            // Update data with flag URLs
+            data.forEach((row) => {
+              const countryName = row.customer_country;
+              const flagURL = countryFlagMap.get(countryName);
+              row.flag = flagURL;
+            });
+
+          // Initialize second AG Grid
+          const gridOptions = {
+            columnDefs: [
+              { headerName: "Company", field: "customer_name"},
+              { headerName: "Customer Name", field: "customer_contact_name"},
+              {
+                headerName: "Country",
+                field: "customer_country",
+                cellRenderer: "countryCellRenderer2",
+                flex: 1.3,
+              },
+              { headerName: "Employee Name", field: "employee_name" },
+              { headerName: "Employee Title", field: "employee_title" , flex: 1.3, },
+              { headerName: "Shipper Name", field: "shipper_name" },
+              { headerName: "Ship Name", field: "ship_name" },
+              { headerName: "Order Date", field: "order_date" },
+              { headerName: "Delivery Date", field: "delivery_date" },
+              {
+                headerName: "Freight Value",
+                field: "freight_value",
+                valueFormatter: (params) => "USD " + params.value.toFixed(2),
+              },
+              {
+                headerName: "Order Value",
+                field: "order_value",
+                valueFormatter: (params) => "USD " + params.value.toFixed(2),
+              },
+              {
+                headerName: "Billable Value",
+                field: "billable_value",
+                valueFormatter: (params) => "USD " + params.value.toFixed(2),
+              },
+            ],
+            defaultColDef: {
+              flex: 1,
+              minWidth: 100,
+              sortable: true,
+              filter: true,
+              floatingFilter: true,
+            },
+            components: {
+              countryCellRenderer2: CountryCellRenderer2,
+            },
+            rowData: data,
+            pagination: true,
+              paginationPageSize: 20,
+              paginationPageSizeSelector: [10, 20, 30],
+          };
+          const gridDiv = document.querySelector("#myGrid2");
+          const gridApi = new agGrid.createGrid(gridDiv, gridOptions); 
+        })
+        .catch((error) =>
+          console.error("Error fetching country flags:", error)
+        );
+    }
+
+    function CountryCellRenderer2(params) {
+      const flag = params.data.flag;
+      const countryName = params.value;
+
+      const flagImage = '<img style="height: 30px;" src="' + flag + '" />';
+      const countryText = "<span>" + countryName + "</span>";
+
+      return flagImage + " " + countryText;
+    }
+
+    SalesOrderReport();  
     </script>
   </body>
 </html>

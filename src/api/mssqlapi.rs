@@ -56,3 +56,17 @@ async fn scrape_currencies_from_narodna_banka_api(db: web::Data<DatabaseMSSQL>) 
     }
     
 }
+
+#[get("/get_orders_report")]
+async fn get_orders_report(db: web::Data<DatabaseMSSQL>) -> impl Responder {
+    match db.sales_orders_report().await {
+        Ok(orders_data) => {
+            if orders_data.is_empty() {
+                HttpResponse::NotFound().body("No data available in the database")
+            } else {    
+                HttpResponse::Ok().json(orders_data)
+            }
+        }
+        Err(_) => HttpResponse::InternalServerError().body("Error retrieving Orders data"),
+    }
+}
