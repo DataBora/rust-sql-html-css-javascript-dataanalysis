@@ -84,3 +84,17 @@ async fn get_customer_sales_by_year(db: web::Data<DatabaseMSSQL>) -> impl Respon
         Err(_) => HttpResponse::InternalServerError().body("Error retrieving Customer data"),
     }
 }
+
+#[get("/get_top_performers")]
+async fn get_top_performers(db: web::Data<DatabaseMSSQL>) -> impl Responder {
+    match db.get_top_performers().await {
+        Ok(top_performers_list) => {
+            if top_performers_list.is_empty() {
+                HttpResponse::NotFound().body("No data available in the database")
+            } else {
+                HttpResponse::Ok().json(top_performers_list)
+            }
+        }
+        Err(_) => HttpResponse::InternalServerError().body("Error retrieving Top Performers data"),
+    }
+}

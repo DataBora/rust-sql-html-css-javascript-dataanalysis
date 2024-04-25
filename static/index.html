@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Currencies</title>
+    <title>COMTRADE REPORT</title>
     <!-- Includes all JS & CSS for AG Grid -->
     <script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.17.4/dist/xlsx.full.min.js"></script>
@@ -389,6 +389,7 @@
     SalesOrderReport();  
     </script>
 
+<!-- ////////// SALES BY CUSTOMERS PER YEAR ///////////// -->
 <h1>Sales by Customer per Year</h1>
 <button class="export-button" onclick="exportToExcel()">Export to Excel</button>
 <table id="customerSalesByYearTable">
@@ -524,6 +525,94 @@
   }
 
   CustomerSalesByYear();
+  </script>
+
+<!-- //////// TOP PERFORMERS per CUSTOMER /////////// -->
+<h1>TOP 10 Customers with Top performing Employees</h1>
+<button class="export-button" onclick="exportToExcel()">Export to Excel</button>
+<table id="topPerformersPerCutomer">
+  <!-- Table content will be filled with data from the API -->
+</table>
+
+<script>
+  function exportToExcel() {
+    fetch("http://localhost:8080/get_top_performers")
+      .then(response => response.json())
+      .then(data => {
+        const worksheet = XLSX.utils.json_to_sheet(data);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Customer");
+        const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+        saveExcelFile(excelBuffer, "top_performers.xlsx");
+      })
+      .catch(error => console.error("Error fetching data:", error));
+  }
+
+  function saveExcelFile(buffer, filename) {
+    const blob = new Blob([buffer], { type: "application/octet-stream" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    }, 0);
+  }
+</script>
+
+<div id="myGrid4" class="ag-theme-quartz" style="height: 570px;">
+  <!-- AG Grid will be rendered here -->
+</div>
+
+<script>
+  function TopPerformers() {
+    fetch("http://localhost:8080/get_top_performers")
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Failed to fetch Top performers data");
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log("Data from the Top Performers  API:", data);
+
+        const gridOptions = {
+          columnDefs: [
+            // Define the columns: customer_thhdp	customer_cyztn	customer_ibvrg	customer_frxzl	customer_gllag	customer_irrvl	customer_nyuhs	customer_lcouj	customer_sfogw	customer_ybqti
+            { headerName: "Customer THHDP", field: "customer_thhdp" },
+            { headerName: "Customer CYZTN", field: "customer_cyztn" },
+            { headerName: "Customer IBVRG", field: "customer_ibvrg" },
+            { headerName: "Customer FRXZL", field: "customer_frxzl" },
+            { headerName: "Customer GLLAG", field: "customer_gllag" },
+            { headerName: "Customer IRRVL", field: "customer_irrvl" },
+            { headerName: "Customer NYUHS", field: "customer_nyuhs" },
+            { headerName: "Customer LCOUJ", field: "customer_lcouj" },
+            { headerName: "Customer SFOGW", field: "customer_sfogw" },
+            { headerName: "Customer YBQTI", field: "customer_ybqti" },
+          ],
+          defaultColDef: {
+            flex: 1,
+            minWidth: 70,
+            // sortable: true,
+            // filter: true,
+            // floatingFilter: true,
+            headerClass: "ag-header-cell" 
+          },
+          rowData: data,
+          pagination: true,
+          paginationPageSize: 10,
+          paginationPageSizeSelector: [10, 15, 20],
+        };
+        const gridDiv = document.querySelector("#myGrid4");
+        const gridApi = new agGrid.createGrid(gridDiv, gridOptions);
+      })
+      .catch((error) => console.error("Error fetching Top performers:", error));
+  }
+
+  TopPerformers();
   </script>
   </body>
 </html>

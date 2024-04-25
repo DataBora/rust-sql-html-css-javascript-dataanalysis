@@ -12,6 +12,7 @@ use crate::models::hremployees::HREmployees;
 use crate::models::currencydata::Currencies;
 use crate::models::ordersreport::OrdersReport;
 use crate::models::customerbyyear::CustomerByYear;
+use crate::models::topperformers::TopPerformers;
 
 #[derive(Clone)]
 pub struct DatabaseMSSQL {
@@ -336,11 +337,91 @@ impl DatabaseMSSQL {
             }
             Ok(customer_data)
         }
-                    
-                
-}   
+
+        pub async fn get_top_performers(&self) -> Result<Vec<TopPerformers>, Error> {
+            let mut client = self.client.lock().expect("Failed to lock client mutex");
+            let mut top_performers = Vec::<TopPerformers>::new();
+
+            if let Some(rows) = client.query(
+                "SELECT 
+                            MAX(CASE WHEN companyname = 'Customer THHDP' THEN top_performers ELSE '' END) AS [customer_thhdp],
+                            MAX(CASE WHEN companyname = 'Customer CYZTN' THEN top_performers ELSE '' END) AS [customer_cyztn],
+                            MAX(CASE WHEN companyname = 'Customer IBVRG' THEN top_performers ELSE '' END) AS [customer_ibvrg],
+                            MAX(CASE WHEN companyname = 'Customer FRXZL' THEN top_performers ELSE '' END) AS [customer_frxzl],
+                            MAX(CASE WHEN companyname = 'Customer GLLAG' THEN top_performers ELSE '' END) AS [customer_gllag],
+                            MAX(CASE WHEN companyname = 'Customer IRRVL' THEN top_performers ELSE '' END) AS [customer_irrvl],
+                            MAX(CASE WHEN companyname = 'Customer NYUHS' THEN top_performers ELSE '' END) AS [customer_nyuhs],
+                            MAX(CASE WHEN companyname = 'Customer LCOUJ' THEN top_performers ELSE '' END) AS [customer_lcouj],
+                            MAX(CASE WHEN companyname = 'Customer SFOGW' THEN top_performers ELSE '' END) AS [customer_sfogw],
+                            MAX(CASE WHEN companyname = 'Customer YBQTI' THEN top_performers ELSE '' END) AS [customer_ybqti]
+                        FROM (
+                            SELECT 
+                                c.companyname, 
+                                top_performers,
+                                ROW_NUMBER() OVER (PARTITION BY c.companyname ORDER BY top_performers) AS RowNum
+                            FROM 
+                                Sales.Customers AS c 
+                            JOIN (
+                                SELECT DISTINCT
+                                    e.lastname + ', ' +  e.firstname AS top_performers, 
+                                    o.custid  
+                                FROM 
+                                    HR.Employees AS e
+                                JOIN
+                                    Sales.Orders AS o ON e.empid = o.empid
+                                JOIN (
+                                    SELECT TOP 10 WITH TIES 
+                                        o.custid,
+                                        c.companyname AS customer_name,
+                                        SUM(CASE WHEN YEAR(o.orderdate) = 2023 
+                                            THEN od.unitprice * od.qty * (1 - od.discount) ELSE 0 END) AS [sales_2023]
+                                    FROM 
+                                        Sales.Orders AS o
+                                    JOIN 
+                                        Sales.OrderDetails AS od ON o.orderid = od.orderid
+                                    JOIN
+                                        Sales.Customers AS c ON o.custid = c.custid
+                                    GROUP BY 
+                                        o.custid, c.companyname
+                                    ORDER BY 
+                                        sales_2023 DESC
+                                ) AS top_10_customers_2023 ON top_10_customers_2023.custid = o.custid
+                            ) AS performers_custid ON performers_custid.custid = c.custid
+                        ) AS top_company_employee
+                        GROUP BY RowNum;", &[]).await.ok() {
+
+                for row in rows.into_first_result().await? {
+                    let customer_thhdp: &str = row.get("customer_thhdp").expect("Failed to get customer_thhdp");
+                    let customer_cyztn: &str = row.get("customer_cyztn").expect("Failed to get customer_cyztn");
+                    let customer_ibvrg: &str = row.get("customer_ibvrg").expect("Failed to get customer_ibvrg");
+                    let customer_frxzl: &str = row.get("customer_frxzl").expect("Failed to get customer_frxzl");
+                    let customer_gllag: &str = row.get("customer_gllag").expect("Failed to get customer_gllag");
+                    let customer_irrvl: &str = row.get("customer_irrvl").expect("Failed to get customer_irrvl");
+                    let customer_nyuhs: &str = row.get("customer_nyuhs").expect("Failed to get customer_nyuhs");
+                    let customer_lcouj: &str = row.get("customer_lcouj").expect("Failed to get customer_lcouj");
+                    let customer_sfogw: &str = row.get("customer_sfogw").expect("Failed to get customer_sfogw");
+                    let customer_ybqti: &str = row.get("customer_ybqti").expect("Failed to get customer_ybqti");
+
+                    let top_performer = TopPerformers {
+                        customer_thhdp: customer_thhdp.to_string(),
+                        customer_cyztn: customer_cyztn.to_string(),
+                        customer_ibvrg: customer_ibvrg.to_string(),
+                        customer_frxzl: customer_frxzl.to_string(),
+                        customer_gllag: customer_gllag.to_string(),
+                        customer_irrvl: customer_irrvl.to_string(),
+                        customer_nyuhs: customer_nyuhs.to_string(),
+                        customer_lcouj: customer_lcouj.to_string(),
+                        customer_sfogw: customer_sfogw.to_string(),
+                        customer_ybqti: customer_ybqti.to_string(),
+                    };
+                    top_performers.push(top_performer);
+                }
+            }
+            Ok(top_performers)
+                                
+    }   
         
-       
+}
 
 #[cfg(test)]
 mod tests {
