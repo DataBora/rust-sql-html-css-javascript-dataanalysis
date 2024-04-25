@@ -11,7 +11,7 @@ mod models;
 
 use crate::db::database::DatabaseMSSQL;
 
-use api::mssqlapi::{insert_into_hr_employee_table, scrape_currencies_from_narodna_banka_api, get_currency_data, get_orders_report};
+use api::mssqlapi::{insert_into_hr_employee_table, scrape_currencies_from_narodna_banka_api, get_currency_data, get_orders_report, get_customer_sales_by_year};
 
 #[actix_web::main]
 async fn main() -> io::Result<()> {
@@ -37,6 +37,7 @@ async fn main() -> io::Result<()> {
                 .service(scrape_currencies_from_narodna_banka_api)
                 .service(get_currency_data)
                 .service(get_orders_report)
+                .service(get_customer_sales_by_year)
         })
         .bind("127.0.0.1:8080")?
         .run()

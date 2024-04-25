@@ -70,3 +70,17 @@ async fn get_orders_report(db: web::Data<DatabaseMSSQL>) -> impl Responder {
         Err(_) => HttpResponse::InternalServerError().body("Error retrieving Orders data"),
     }
 }
+
+#[get("/get_customer_sales_by_year")]
+async fn get_customer_sales_by_year(db: web::Data<DatabaseMSSQL>) -> impl Responder {
+    match db.get_customer_sales_by_year().await {
+        Ok(customer_data) => {
+            if customer_data.is_empty() {
+                HttpResponse::NotFound().body("No data available in the database")
+            } else {
+                HttpResponse::Ok().json(customer_data)
+            }
+        }
+        Err(_) => HttpResponse::InternalServerError().body("Error retrieving Customer data"),
+    }
+}

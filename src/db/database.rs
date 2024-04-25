@@ -11,6 +11,7 @@ use scraper::{Html, Selector};
 use crate::models::hremployees::HREmployees;
 use crate::models::currencydata::Currencies;
 use crate::models::ordersreport::OrdersReport;
+use crate::models::customerbyyear::CustomerByYear;
 
 #[derive(Clone)]
 pub struct DatabaseMSSQL {
@@ -295,6 +296,45 @@ impl DatabaseMSSQL {
 
             Ok(orders_data)
             
+        }
+
+        pub async fn get_customer_sales_by_year(&self) -> Result<Vec<CustomerByYear>, Error> {
+            let mut client = self.client.lock().expect("Failed to lock client mutex");
+
+            let mut customer_data = Vec::<CustomerByYear>::new();
+
+            if let Some(rows) = client.query(
+                "SELECT c.companyname as customer_name
+                            , CAST(SUM(CASE WHEN YEAR(o.orderdate) = 2021
+                                    THEN od.unitprice * od.qty * (1-od.discount) ELSE 0 END) as FLOAT) as [sales_2021]
+                            ,CAST(SUM(CASE WHEN YEAR(o.orderdate) = 2022
+                                    THEN od.unitprice * od.qty * (1-od.discount) ELSE 0 END) as FLOAT) as [sales_2022]
+                            ,CAST(SUM(CASE WHEN YEAR(o.orderdate) = 2023
+                                    THEN od.unitprice * od.qty * (1-od.discount) ELSE 0 END) as FLOAT) as [sales_2023]
+                        FROM Sales.Orders as o
+                        JOIN
+                            Sales.OrderDetails as od on o.orderid = od.orderid
+                        JOIN Sales.Customers as c on o.custid = c.custid
+                        GROUP BY c.companyname
+                        ORDER BY 4 DESC", &[]).await.ok() {
+
+                for row in rows.into_first_result().await? {
+                    let customer_name: &str= row.get("customer_name").expect("Failed to get customer_name");
+                    let sales_2021: f64 = row.get("sales_2021").expect("Failed to get sales_2021");
+                    let sales_2022: f64 = row.get("sales_2022").expect("Failed to get sales_2022");
+                    let sales_2023: f64 = row.get("sales_2023").expect("Failed to get sales_2023");
+                    let customer_by_year = CustomerByYear {
+                        customer_name: customer_name.to_string(),
+                        sales_2021,
+                        sales_2022,
+                        sales_2023,
+                    };
+                    customer_data.push(customer_by_year);
+                }
+            } else {
+                return Err(Error::msg("Failed to execute SQL query"));
+            }
+            Ok(customer_data)
         }
                     
                 

@@ -7,6 +7,7 @@
     <!-- Includes all JS & CSS for AG Grid -->
     <script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.17.4/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.31.1.min.js" charset="utf-8"></script>
 
     <style>
       /* Ensure the grid takes the full width and height of its container */
@@ -16,7 +17,7 @@
       }
 
       .ag-cell-font-size {
-        font-size: 23px;
+        font-size: 17px;
       }
 
       .ag-cell-bold {
@@ -45,19 +46,46 @@
     .export-button:hover {
       background-color: #45a049;
     }
+
+      /* Cell arrows */
+      .example-wrapper {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .align-right {
+      text-align: left;
+    }
+
+    .ag-cell-arrow-up {
+      color: green;
+    }
+
+    .ag-cell-arrow-down {
+      color: red;
+    }
+
+     /* Style for column headers */
+  .ag-header-cell {
+    /* background-color: #f2f2f2;
+    color: #333;  */
+    font-weight: bold; 
+    border-bottom: 1px solid #3fdb59; 
+  }
     </style>
   </head>
  
-    <h1>
+    <!-- <h1>
       Currencies from Serbain National Bank
       <span id="last-refresh"
         >(Last refreshed: <span id="refresh-timestamp"></span>)</span
       >
     </h1>
-    <!-- AG Grid container -->
-    <div id="myGrid" class="ag-theme-quartz-dark" style="height: 570px"></div>
+     AG Grid container 
+    <div id="myGrid" class="ag-theme-quartz-dark" style="height: 570px"></div> -->
 
-    <script>
+    <!-- <script>
       function fetchData() {
         const refreshTimestamp = new Date().toLocaleString();
         document.getElementById("refresh-timestamp").textContent =
@@ -195,7 +223,7 @@
       }
 
       fetchData(); // Fetch data on page load
-    </script>
+    </script> -->
 
     <h1>
       Sales Order Report
@@ -235,7 +263,7 @@
     }
   </script>
     <!-- Second AG Grid container -->
-    <div id="myGrid2" class="ag-theme-quartz-dark" style="height: 570px"></div>
+    <div id="myGrid2" class="ag-theme-quartz" style="height: 570px"></div>
     </div>
 
     <script>
@@ -253,7 +281,7 @@
           // Fetch country flags and update the table
           fetchCountryFlags2(data);
         })
-        .catch((error) => console.error("Error fetching currencies:", error));
+        .catch((error) => console.error("Error fetching Sales Orders:", error));
     }
 
     function fetchCountryFlags2(data) {
@@ -291,15 +319,19 @@
           // Initialize second AG Grid
           const gridOptions = {
             columnDefs: [
-              { headerName: "Company", field: "customer_name"},
-              { headerName: "Customer Name", field: "customer_contact_name"},
+              { headerName: "Company", field: "customer_name",flex: 1.1,
+               cellClassRules: {
+                   "ag-cell-bold": (p) => p.data.customer_name,
+                  //  "ag-cell-font-size": (p) => p.data.customer_name,
+                  },},
+              { headerName: "Customer Name", field: "customer_contact_name", flex: 1.1,},
               {
                 headerName: "Country",
                 field: "customer_country",
                 cellRenderer: "countryCellRenderer2",
                 flex: 1.3,
               },
-              { headerName: "Employee Name", field: "employee_name" },
+              { headerName: "Employee Name", field: "employee_name",flex: 1.1 },
               { headerName: "Employee Title", field: "employee_title" , flex: 1.3, },
               { headerName: "Shipper Name", field: "shipper_name" },
               { headerName: "Ship Name", field: "ship_name" },
@@ -356,5 +388,142 @@
 
     SalesOrderReport();  
     </script>
+
+<h1>Sales by Customer per Year</h1>
+<button class="export-button" onclick="exportToExcel()">Export to Excel</button>
+<table id="customerSalesByYearTable">
+  <!-- Table content will be filled with data from the API -->
+</table>
+
+<script>
+  function exportToExcel() {
+    fetch("http://localhost:8080/get_cutomer_sales_by_year")
+      .then(response => response.json())
+      .then(data => {
+        const worksheet = XLSX.utils.json_to_sheet(data);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Customer");
+        const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+        saveExcelFile(excelBuffer, "customer_sales_by_year.xlsx");
+      })
+      .catch(error => console.error("Error fetching data:", error));
+  }
+
+  function saveExcelFile(buffer, filename) {
+    const blob = new Blob([buffer], { type: "application/octet-stream" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    }, 0);
+  }
+</script>
+
+<div id="myGrid3" class="ag-theme-quartz" style="height: 570px; max-width: 800px;">
+  <!-- AG Grid will be rendered here -->
+</div>
+
+<script>
+  function CustomerSalesByYear() {
+    fetch("http://localhost:8080/get_customer_sales_by_year")
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Failed to fetch Customer Sales By Year data");
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log("Data from the Customer Sales By Year API:", data);
+
+        const gridOptions = {
+          columnDefs: [
+            { headerName: "Company", field: "customer_name" , 
+            cellClassRules: {
+                   "ag-cell-bold": (p) => p.data.customer_name,
+                    "ag-cell-font-size": (p) => p.data.customer_name,
+                  },
+                
+                },
+            {
+              headerName: "Sales for 2021",
+              field: "sales_2021",
+              valueFormatter: (params) => "USD " + params.value.toFixed(2),
+              cellClass: "align-right",
+              cellClassRules: {
+                    // "ag-cell-bold": (p) => p.data.srednji_kurs,
+                    "ag-cell-font-size": (p) => p.data.sales_2021,
+                  },
+            },
+            {
+              headerName: "Sales for 2022",
+              field: "sales_2022",
+              valueFormatter: (params) => "USD " + params.value.toFixed(2),
+              cellClass: "align-right",
+              cellStyle: function (params) {
+                const previousYearValue = params.data.sales_2021 || 0;
+                const currentYearValue = params.value;
+                return {
+                  "color": currentYearValue > previousYearValue ? "green" : currentYearValue < previousYearValue ? "red" : "black"
+                };
+              },
+              cellRenderer: function (params) {
+                const previousYearValue = params.data.sales_2021 || 0;
+                const currentYearValue = params.value;
+                const arrowClass = currentYearValue > previousYearValue ? "ag-cell-arrow-up" : currentYearValue < previousYearValue ? "ag-cell-arrow-down" : "";
+                return `<div>${currentYearValue.toFixed(2)} <span class="${arrowClass}">${currentYearValue > previousYearValue ? '↑' : currentYearValue < previousYearValue ? '↓' : ''}</span></div>`;
+              }, cellClassRules: {
+                    // "ag-cell-bold": (p) => p.data.srednji_kurs,
+                    "ag-cell-font-size": (p) => p.data.sales_2022,
+                  },
+            },
+            {
+              headerName: "Sales for 2023",
+              field: "sales_2023",
+              valueFormatter: (params) => "USD " + params.value.toFixed(2),
+              cellClass: "align-right",
+              cellStyle: function (params) {
+                const previousYearValue = params.data.sales_2022 || 0;
+                const currentYearValue = params.value;
+                return {
+                  "color": currentYearValue > previousYearValue ? "green" : currentYearValue < previousYearValue ? "red" : "black"
+                };
+              },
+              cellRenderer: function (params) {
+                const previousYearValue = params.data.sales_2022 || 0;
+                const currentYearValue = params.value;
+                const arrowClass = currentYearValue > previousYearValue ? "ag-cell-arrow-up" : currentYearValue < previousYearValue ? "ag-cell-arrow-down" : "";
+                return `<div>${currentYearValue.toFixed(2)} <span class="${arrowClass}">${currentYearValue > previousYearValue ? '↑' : currentYearValue < previousYearValue ? '↓' : ''}</span></div>`;
+              } , cellClassRules: {
+                    // "ag-cell-bold": (p) => p.data.srednji_kurs,
+                    "ag-cell-font-size": (p) => p.data.sales_2023,
+                  },
+            },
+          ],
+          defaultColDef: {
+            flex: 1,
+            minWidth: 70,
+            sortable: true,
+            filter: true,
+            floatingFilter: true,
+            headerClass: "ag-header-cell" 
+          },
+          rowData: data,
+          pagination: true,
+          paginationPageSize: 10,
+          paginationPageSizeSelector: [10, 15, 20],
+        };
+        const gridDiv = document.querySelector("#myGrid3");
+        const gridApi = new agGrid.createGrid(gridDiv, gridOptions);
+      })
+      .catch((error) => console.error("Error fetching Customer Sales By Year:", error));
+  }
+
+  CustomerSalesByYear();
+  </script>
   </body>
 </html>
