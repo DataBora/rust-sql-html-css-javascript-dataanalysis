@@ -13,6 +13,7 @@ use crate::models::currencydata::Currencies;
 use crate::models::ordersreport::OrdersReport;
 use crate::models::customerbyyear::CustomerByYear;
 use crate::models::topperformers::TopPerformers;
+use crate::models::saleschoropleth::SalesChoropleth;
 
 #[derive(Clone)]
 pub struct DatabaseMSSQL {
@@ -417,10 +418,41 @@ impl DatabaseMSSQL {
                     top_performers.push(top_performer);
                 }
             }
-            Ok(top_performers)
-                                
-    }   
-        
+            Ok(top_performers)    
+    }  
+
+    pub async fn get_sales_choropleth(&self) -> Result<Vec<SalesChoropleth>, Error> {
+        let mut client = self.client.lock().expect("Failed to lock client mutex");
+
+        let mut sales_choropleth_data = Vec::<SalesChoropleth>::new();
+
+        if let Some(rows) = client.query(
+            "SELECT c.country AS country
+                    , CAST(SUM(CASE WHEN YEAR(o.orderdate) = 2023
+                            THEN od.unitprice * od.qty * (1-od.discount) ELSE 0 END) as FLOAT) as [sales_2023]
+                    FROM Sales.Orders as o
+                    JOIN
+                        Sales.OrderDetails as od on o.orderid = od.orderid
+                    JOIN Sales.Customers as c on o.custid = c.custid
+                    GROUP BY c.country
+                    ORDER BY 2 desc;", &[]).await.ok() {
+            for row in rows.into_first_result().await? {
+
+                let country: &str = row.get("country").expect("Failed to get country");
+                let sales_2023: f64 = row.get("sales_2023").expect("Failed to get sales_2023");
+                
+                let sales_choropleth = SalesChoropleth {
+                    country: country.to_string(),
+                    sales_2023
+                };
+                sales_choropleth_data.push(sales_choropleth);
+            }
+        } else {
+            return Err(Error::msg("Failed to execute SQL query"));
+        }
+        Ok(sales_choropleth_data)    
+    }
+
 }
 
 #[cfg(test)]

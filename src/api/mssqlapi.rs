@@ -98,3 +98,17 @@ async fn get_top_performers(db: web::Data<DatabaseMSSQL>) -> impl Responder {
         Err(_) => HttpResponse::InternalServerError().body("Error retrieving Top Performers data"),
     }
 }
+
+#[get("/get_sales_choropleth")]
+async fn get_sales_choropleth(db: web::Data<DatabaseMSSQL>) -> impl Responder {
+    match db.get_sales_choropleth().await {
+        Ok(sales_choropleth_list) => {
+            if sales_choropleth_list.is_empty() {   
+                HttpResponse::NotFound().body("No data available in the database")
+            } else {
+                HttpResponse::Ok().json(sales_choropleth_list)
+            }
+        }
+        Err(_) => HttpResponse::InternalServerError().body("Error retrieving Sales Choropleth data"),
+    }
+}

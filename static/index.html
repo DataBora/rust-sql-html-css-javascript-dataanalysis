@@ -396,6 +396,17 @@
   <!-- Table content will be filled with data from the API -->
 </table>
 
+<div id="container" style="display: flex; align-items: flex-start;">
+  <div id="myGrid3" class="ag-theme-quartz" style="height: 570px; max-width: 800px; flex: 1; margin-bottom: 20px;">
+    <!-- AG Grid will be rendered here -->
+  </div>
+  <div style="flex: 1; display: flex; flex-direction: column; margin-top: -20px;">
+    <!-- <h1 style="text-align: center; margin-bottom: 10px;">Customer Sales by Country in 2023</h1> -->
+    <div id="choroplethMap" style="height: 570px; max-width: 1000px;"></div>
+  </div>
+</div>
+
+
 <script>
   function exportToExcel() {
     fetch("http://localhost:8080/get_cutomer_sales_by_year")
@@ -425,9 +436,9 @@
   }
 </script>
 
-<div id="myGrid3" class="ag-theme-quartz" style="height: 570px; max-width: 800px;">
-  <!-- AG Grid will be rendered here -->
-</div>
+<!-- <div id="myGrid3" class="ag-theme-quartz" style="height: 570px; max-width: 800px;flex: 1">
+  AG Grid will be rendered here -->
+</div> 
 
 <script>
   function CustomerSalesByYear() {
@@ -526,6 +537,71 @@
 
   CustomerSalesByYear();
   </script>
+
+
+<script>
+  function fetchChoroplethData() {
+    return fetch("http://localhost:8080/get_sales_choropleth")
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Failed to fetch sales choropleth data");
+        }
+        return response.json();
+      })
+      .catch((error) => {
+        console.error("Error fetching sales choropleth data:", error);
+        throw error;
+      });
+  }
+
+  function plotChoroplethMap(data) {
+    const salesData = [{
+      type: 'choropleth',
+      locationmode: 'country names',
+      locations: data.map(item => item.country),
+      z: data.map(item => parseFloat(item.sales_2023.toString().replace(',', '.'))), // Parse sales value as float
+      text: data.map(item => item.country),
+      hoverinfo: 'text+z',
+      hoverlabel: { bgcolor: '#fff', bordercolor: '#000' },
+      hovertemplate: '<b>%{text}</b><br>Sales: $%{z:,.2f}',
+      colorscale: [
+      [0, 'rgb(220,255,220)'],
+        [0.5, 'rgb(69,160,73)'],
+        [1, 'rgb(0,102,0)']
+      ],
+      autocolorscale: false
+    }];
+
+    const layout = {
+      title: {
+        text: 'Sales by Country in 2023', 
+        font: {
+          family: 'Times New Roman', 
+          size: 32, 
+          color: 'black',
+          weight: 'bold' 
+        }
+      },
+      geo: {
+        projection: {
+          type: 'miller' //miller robinson or orthographic, kavrayskiy7
+        }
+      },
+      width: 1000, // Set the width of the map
+      height: 670 // Set the height of the map
+    };
+
+    Plotly.newPlot('choroplethMap', salesData, layout);
+  }
+
+  fetchChoroplethData()
+    .then(data => {
+      console.log("Data for Choropleth API:", data);
+      plotChoroplethMap(data);
+    })
+    .catch(error => console.error("Error fetching choropleth data:", error));
+</script>
+  
 
 <!-- //////// TOP PERFORMERS per CUSTOMER /////////// -->
 <h1>TOP 10 Customers with Top performing Employees</h1>
