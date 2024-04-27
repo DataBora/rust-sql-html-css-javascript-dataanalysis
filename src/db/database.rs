@@ -14,6 +14,8 @@ use crate::models::ordersreport::OrdersReport;
 use crate::models::customerbyyear::CustomerByYear;
 use crate::models::topperformers::TopPerformers;
 use crate::models::saleschoropleth::SalesChoropleth;
+use crate::models::correlation::CorrelationTable;
+use crate::models::correlationstats::CorrelationStats;
 
 #[derive(Clone)]
 pub struct DatabaseMSSQL {
@@ -451,6 +453,231 @@ impl DatabaseMSSQL {
             return Err(Error::msg("Failed to execute SQL query"));
         }
         Ok(sales_choropleth_data)    
+    }
+
+    pub async fn get_correlation_table(&self) -> Result<Vec<CorrelationTable>, Error> {
+        let mut client = self.client.lock().expect("Failed to lock client mutex");
+        let mut correlation_data = Vec::<CorrelationTable>::new();
+        if let Some(rows) = client.query(
+            "SELECT sales_by_year.company_name,
+                        diff_values.max_date_diff_for_shipping
+                        , sales_by_year.sales_2022
+                        , sales_by_year.sales_2023
+                        , sales_by_year.sales_diff
+                        , CASE 
+                            WHEN diff_values.max_date_diff_for_shipping > 0 THEN
+                                CASE 
+                                    WHEN sales_by_year.sales_diff < 0 THEN 1 
+                                    ELSE 0 
+                                END 
+                            ELSE
+                                CASE 
+                                    WHEN sales_by_year.sales_diff < 0 THEN 1 
+                                    ELSE 0 
+                                END 
+                                    END AS true_false
+                        FROM 
+                        (SELECT c.companyname as company_name 
+                            , CAST(SUM(CASE WHEN YEAR(o.orderdate) = 2022 THEN
+                                    od.unitprice * od.qty * (1-od.discount) ELSE 0 END) as FLOAT) as sales_2022
+                            , CAST(SUM(CASE WHEN YEAR(o.orderdate) = 2023 THEN
+                                    od.unitprice * od.qty * (1 - od.discount) ELSE 0 END) as FLOAT) as sales_2023
+                            , (CAST(SUM(CASE WHEN YEAR(o.orderdate) = 2023 THEN
+                                    od.unitprice * od.qty * (1-od.discount) ELSE 0 END) as FLOAT)) -
+                                (CAST(SUM(CASE WHEN YEAR(o.orderdate) = 2022 THEN
+                                    od.unitprice * od.qty * (1 - od.discount) ELSE 0 END) as FLOAT)) as sales_diff
+                            FROM Sales.Orders as o
+                        JOIN
+                            Sales.OrderDetails as od on o.orderid = od.orderid
+                        JOIN Sales.Customers as c on o.custid = c.custid
+                            GROUP BY c.companyname) as sales_by_year
+                        JOIN 
+                            (SELECT c.companyname as company_name
+                                    , date_diff_custid.max_date_diff_for_shipping
+                                FROM Sales.Customers as c
+                            JOIN 
+                            (SELECT
+                                custid
+                                , MAX(DATEDIFF(DAY, requireddate, shippeddate)) as max_date_diff_for_shipping
+                            FROM Sales.Orders
+                            GROUP BY custid) AS date_diff_custid
+                                    on c.custid = date_diff_custid.custid) as diff_values on sales_by_year.company_name = diff_values.company_name
+                        ORDER BY diff_values.max_date_diff_for_shipping DESC;", &[]).await.ok() {
+            for row in rows.into_first_result().await? {
+                let company_name: &str = row.get("company_name").expect("Failed to get company_name");
+                let max_date_diff_for_shipping: i32 = row.get("max_date_diff_for_shipping").expect("Failed to get max_date_diff_for_shipping");
+                let sales_2022: f64 = row.get("sales_2022").expect("Failed to get sales_2022");
+                let sales_2023: f64 = row.get("sales_2023").expect("Failed to get sales_2023");
+                let sales_diff: f64 = row.get("sales_diff").expect("Failed to get sales_diff");
+                let true_false: i32 = row.get("true_false").expect("Failed to get true_false");
+                let correlation_table = CorrelationTable {
+                    company_name: company_name.to_string(),
+                    max_date_diff_for_shipping,
+                    sales_2022,
+                    sales_2023,
+                    sales_diff,
+                    true_false
+                };
+                correlation_data.push(correlation_table);
+            }
+        } else {
+            return Err(Error::msg("Failed to execute SQL query"));
+        }
+        Ok(correlation_data)
+    }
+
+    pub async fn get_correlation_stats_bellow_zero(&self) -> Result<Vec<CorrelationStats>, Error> {
+        let mut client = self.client.lock().expect("Failed to lock client mutex");
+
+        let mut correlation_stats = Vec::<CorrelationStats>::new();
+
+        if let Some(rows) = client.query("
+                        SELECT  COUNT(CASE WHEN tf_table.true_false = 1 THEN 1 END) as true_count
+                            , COUNT(CASE WHEN tf_table.true_false = 0 THEN 0 END) as false_count
+                            , CAST(COUNT(CASE WHEN tf_table.true_false = 1 THEN 1 END) * 100.0 / 
+                                (COUNT(CASE WHEN tf_table.true_false = 1 THEN 1 END) + COUNT(CASE WHEN tf_table.true_false = 0 THEN 1 END)) AS FLOAT) as percent_true
+                            , CAST(COUNT(CASE WHEN tf_table.true_false = 0 THEN 0 END) * 100.0 / 
+                                (COUNT(CASE WHEN tf_table.true_false = 1 THEN 1 END) + COUNT(CASE WHEN tf_table.true_false = 0 THEN 1 END)) AS FLOAT)as percent_false
+                            FROM
+                            (SELECT sales_by_year.company_name,
+                                    diff_values.max_date_diff_for_shipping
+                                    , sales_by_year.sales_2022
+                                    , sales_by_year.sales_2023
+                                    , sales_by_year.sales_diff
+                                    , CASE 
+                                        WHEN diff_values.max_date_diff_for_shipping > 0 THEN
+                                            CASE 
+                                                WHEN sales_by_year.sales_diff < 0 THEN 1 
+                                                ELSE 0 
+                                            END 
+                                        ELSE
+                                            CASE 
+                                                WHEN sales_by_year.sales_diff < 0 THEN 1 
+                                                ELSE 0 
+                                            END 
+                                                END AS true_false
+                            FROM 
+                            (SELECT c.companyname as company_name 
+                                , CAST(SUM(CASE WHEN YEAR(o.orderdate) = 2022 THEN
+                                        od.unitprice * od.qty * (1-od.discount) ELSE 0 END) as FLOAT) as sales_2022
+                                , CAST(SUM(CASE WHEN YEAR(o.orderdate) = 2023 THEN
+                                        od.unitprice * od.qty * (1 - od.discount) ELSE 0 END) as FLOAT) as sales_2023
+                                , (CAST(SUM(CASE WHEN YEAR(o.orderdate) = 2023 THEN
+                                        od.unitprice * od.qty * (1-od.discount) ELSE 0 END) as FLOAT)) -
+                                    (CAST(SUM(CASE WHEN YEAR(o.orderdate) = 2022 THEN
+                                        od.unitprice * od.qty * (1 - od.discount) ELSE 0 END) as FLOAT)) as sales_diff
+                                FROM Sales.Orders as o
+                            JOIN
+                                Sales.OrderDetails as od on o.orderid = od.orderid
+                            JOIN Sales.Customers as c on o.custid = c.custid
+                                GROUP BY c.companyname) as sales_by_year
+                            JOIN 
+                                (SELECT c.companyname as company_name
+                                        , date_diff_custid.max_date_diff_for_shipping
+                                    FROM Sales.Customers as c
+                                JOIN 
+                                (SELECT
+                                    custid
+                                    , MAX(DATEDIFF(DAY, requireddate, shippeddate)) as max_date_diff_for_shipping
+                                FROM Sales.Orders
+                                GROUP BY custid) AS date_diff_custid
+                                        on c.custid = date_diff_custid.custid) as diff_values on sales_by_year.company_name = diff_values.company_name) as tf_table
+                          WHERE tf_table.max_date_diff_for_shipping < 0;", &[]).await.ok() {
+            for row in rows.into_first_result().await? {
+                let true_count: i32 = row.get("true_count").expect("Failed to get true_count");
+                let false_count: i32 = row.get("false_count").expect("Failed to get false_count");
+                let percent_true: f64 = row.get("percent_true").expect("Failed to get percent_true");
+                let percent_false: f64 = row.get("percent_false").expect("Failed to get percent_false");
+                let correlation_data = CorrelationStats {
+                    true_count,
+                    false_count,
+                    percent_true,
+                    percent_false
+                };
+                correlation_stats.push(correlation_data);
+            }
+        } else {
+            return Err(Error::msg("Failed to execute SQL query"));
+        }
+        Ok(correlation_stats)
+
+    }
+
+    pub async fn get_correlation_stats_above_zero(&self) -> Result<Vec<CorrelationStats>, Error> {
+        let mut client = self.client.lock().expect("Failed to lock client mutex");
+
+        let mut correlation_stats = Vec::<CorrelationStats>::new();
+
+        if let Some(rows) = client.query("
+                    SELECT  COUNT(CASE WHEN tf_table.true_false = 1 THEN 1 END) as true_count
+                        , COUNT(CASE WHEN tf_table.true_false = 0 THEN 0 END) as false_count
+                        , CAST(COUNT(CASE WHEN tf_table.true_false = 1 THEN 1 END) * 100.0 / 
+                            (COUNT(CASE WHEN tf_table.true_false = 1 THEN 1 END) + COUNT(CASE WHEN tf_table.true_false = 0 THEN 1 END)) as FLOAT) as percent_true
+                        , CAST(COUNT(CASE WHEN tf_table.true_false = 0 THEN 0 END) * 100.0 / 
+                            (COUNT(CASE WHEN tf_table.true_false = 1 THEN 1 END) + COUNT(CASE WHEN tf_table.true_false = 0 THEN 1 END)) as FLOAT) as percent_false
+                            FROM
+                            (SELECT sales_by_year.company_name,
+                                    diff_values.max_date_diff_for_shipping
+                                    , sales_by_year.sales_2022
+                                    , sales_by_year.sales_2023
+                                    , sales_by_year.sales_diff
+                                    , CASE 
+                                        WHEN diff_values.max_date_diff_for_shipping > 0 THEN
+                                            CASE 
+                                                WHEN sales_by_year.sales_diff < 0 THEN 1 
+                                                ELSE 0 
+                                            END 
+                                        ELSE
+                                            CASE 
+                                                WHEN sales_by_year.sales_diff < 0 THEN 1 
+                                                ELSE 0 
+                                            END 
+                                                END AS true_false
+                            FROM 
+                            (SELECT c.companyname as company_name 
+                                , CAST(SUM(CASE WHEN YEAR(o.orderdate) = 2022 THEN
+                                        od.unitprice * od.qty * (1-od.discount) ELSE 0 END) as FLOAT) as sales_2022
+                                , CAST(SUM(CASE WHEN YEAR(o.orderdate) = 2023 THEN
+                                        od.unitprice * od.qty * (1 - od.discount) ELSE 0 END) as FLOAT) as sales_2023
+                                , (CAST(SUM(CASE WHEN YEAR(o.orderdate) = 2023 THEN
+                                        od.unitprice * od.qty * (1-od.discount) ELSE 0 END) as FLOAT)) -
+                                    (CAST(SUM(CASE WHEN YEAR(o.orderdate) = 2022 THEN
+                                        od.unitprice * od.qty * (1 - od.discount) ELSE 0 END) as FLOAT)) as sales_diff
+                                FROM Sales.Orders as o
+                            JOIN
+                                Sales.OrderDetails as od on o.orderid = od.orderid
+                            JOIN Sales.Customers as c on o.custid = c.custid
+                                GROUP BY c.companyname) as sales_by_year
+                            JOIN 
+                                (SELECT c.companyname as company_name
+                                        , date_diff_custid.max_date_diff_for_shipping
+                                    FROM Sales.Customers as c
+                                JOIN 
+                                (SELECT
+                                    custid
+                                    , MAX(DATEDIFF(DAY, requireddate, shippeddate)) as max_date_diff_for_shipping
+                                FROM Sales.Orders
+                                GROUP BY custid) AS date_diff_custid
+                                        on c.custid = date_diff_custid.custid) as diff_values on sales_by_year.company_name = diff_values.company_name) as tf_table
+                            WHERE tf_table.max_date_diff_for_shipping > 0;", &[]).await.ok() {
+            for row in rows.into_first_result().await? {
+                let true_count: i32 = row.get("true_count").expect("Failed to get true_count");
+                let false_count: i32 = row.get("false_count").expect("Failed to get false_count");
+                let percent_true: f64 = row.get("percent_true").expect("Failed to get percent_true");
+                let percent_false: f64 = row.get("percent_false").expect("Failed to get percent_false");
+                let correlation_data = CorrelationStats {
+                    true_count,
+                    false_count,
+                    percent_true,
+                    percent_false
+                };
+                correlation_stats.push(correlation_data);
+            }
+        } else {
+            return Err(Error::msg("Failed to execute SQL query"));
+        }
+        Ok(correlation_stats)
+
     }
 
 }

@@ -2,6 +2,7 @@ use actix_web::{web, App, HttpServer};
 use actix_files::Files;
 use actix_cors::Cors;
 
+
 use std::io;
 use futures::future;
 
@@ -11,7 +12,7 @@ mod models;
 
 use crate::db::database::DatabaseMSSQL;
 
-use api::mssqlapi::{insert_into_hr_employee_table, scrape_currencies_from_narodna_banka_api, get_currency_data, get_orders_report, get_customer_sales_by_year, get_top_performers, get_sales_choropleth};
+use api::mssqlapi::{insert_into_hr_employee_table, scrape_currencies_from_narodna_banka_api, get_currency_data, get_orders_report, get_customer_sales_by_year, get_top_performers, get_sales_choropleth, get_correlation_table, get_correlation_stats_above_zero, get_correlation_stats_bellow_zero};
 
 #[actix_web::main]
 async fn main() -> io::Result<()> {
@@ -40,6 +41,9 @@ async fn main() -> io::Result<()> {
                 .service(get_customer_sales_by_year)
                 .service(get_top_performers)
                 .service(get_sales_choropleth)
+                .service(get_correlation_table)
+                .service(get_correlation_stats_above_zero)
+                .service(get_correlation_stats_bellow_zero)
         })
         .bind("127.0.0.1:8080")?
         .run()

@@ -112,3 +112,48 @@ async fn get_sales_choropleth(db: web::Data<DatabaseMSSQL>) -> impl Responder {
         Err(_) => HttpResponse::InternalServerError().body("Error retrieving Sales Choropleth data"),
     }
 }
+
+#[get("/get_correlation_table")]
+async fn get_correlation_table(db: web::Data<DatabaseMSSQL>) -> impl Responder {
+    match db.get_correlation_table().await {
+        Ok(correlation_stats) => {
+            if correlation_stats.is_empty() {
+                HttpResponse::NotFound().body("No data available in the database")
+            } else {
+                HttpResponse::Ok().json(correlation_stats)
+            }
+        }
+        Err(_) => HttpResponse::InternalServerError().body("Error retrieving Correlation data"),
+    }
+}
+
+#[get("/get_correlation_stats_above_zero")]
+async fn get_correlation_stats_above_zero(db: web::Data<DatabaseMSSQL>) -> impl Responder {
+    match db.get_correlation_stats_above_zero().await {
+        Ok(correlation_stats) => {
+            if correlation_stats.is_empty() {
+                HttpResponse::NotFound().body("No data available in the database")
+            } else {
+                HttpResponse::Ok().json(correlation_stats)
+            }
+        }
+        Err(_) => HttpResponse::InternalServerError().body("Error retrieving Correlation data"),
+    }
+}
+
+#[get("/get_correlation_stats_bellow_zero")]
+async fn get_correlation_stats_bellow_zero(db: web::Data<DatabaseMSSQL>) -> impl Responder {
+    match db.get_correlation_stats_bellow_zero().await {
+        Ok(correlation_stats) => {
+            if correlation_stats.is_empty() {
+                HttpResponse::NotFound().body("No data available in the database")
+            } else {
+                HttpResponse::Ok().json(correlation_stats)
+            }
+        }
+        Err(_) => HttpResponse::InternalServerError().body("Error retrieving Correlation data"),
+    }
+}
+
+
+
