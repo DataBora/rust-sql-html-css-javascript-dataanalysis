@@ -2,7 +2,6 @@ use actix_web::{web, App, HttpServer};
 use actix_files::Files;
 use actix_cors::Cors;
 
-
 use std::io;
 use futures::future;
 
@@ -58,6 +57,7 @@ async fn main() -> io::Result<()> {
             App::new()
             .wrap(Cors::default())
             .service(Files::new("/", "static").index_file("index.html"))
+            .service(Files::new("/", "static").index_file("currencies.html"))
         
     })
     .bind("127.0.0.1:3000")?;
