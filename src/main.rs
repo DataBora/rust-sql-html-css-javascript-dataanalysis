@@ -11,7 +11,7 @@ mod models;
 
 use crate::db::database::DatabaseMSSQL;
 
-use api::mssqlapi::{insert_into_hr_employee_table, scrape_currencies_from_narodna_banka_api, get_currency_data, get_orders_report, get_customer_sales_by_year, get_top_performers, get_sales_choropleth, get_correlation_table, get_correlation_stats_above_zero, get_correlation_stats_bellow_zero};
+use api::mssqlapi::{insert_into_hr_employee_table, get_currency_data, get_orders_report, get_customer_sales_by_year, get_top_performers, get_sales_choropleth, get_correlation_table, get_correlation_stats_above_zero, get_correlation_stats_bellow_zero};
 
 #[actix_web::main]
 async fn main() -> io::Result<()> {
@@ -34,7 +34,6 @@ async fn main() -> io::Result<()> {
                 .app_data(web::Data::new(db.clone()))
                 // .wrap(Logger::default())
                 .service(insert_into_hr_employee_table)
-                .service(scrape_currencies_from_narodna_banka_api)
                 .service(get_currency_data)
                 .service(get_orders_report)
                 .service(get_customer_sales_by_year)
@@ -57,7 +56,6 @@ async fn main() -> io::Result<()> {
             App::new()
             .wrap(Cors::default())
             .service(Files::new("/", "static").index_file("index.html"))
-            .service(Files::new("/", "static").index_file("currencies.html"))
         
     })
     .bind("127.0.0.1:3000")?;

@@ -45,18 +45,6 @@ async fn insert_into_hr_employee_table(db: web::Data<DatabaseMSSQL>, employee: w
     HttpResponse::Ok().body("Data inserted successfully")
 }
 
-//create a api end pint to call scrape_currencies_from_narodna_banka function
-#[get("/scrape_currencies_from_narodna_banka_api")]
-async fn scrape_currencies_from_narodna_banka_api(db: web::Data<DatabaseMSSQL>) -> impl Responder {
-    
-    match db.scrape_currencies_from_narodna_banka().await {
-        Ok(_) => HttpResponse::Ok().body("Data inserted successfully"),
-        Err(err) => HttpResponse::InternalServerError().body(format!("Error inserting data: {:?}", err)),
-        
-    }
-    
-}
-
 #[get("/get_orders_report")]
 async fn get_orders_report(db: web::Data<DatabaseMSSQL>) -> impl Responder {
     match db.sales_orders_report().await {
